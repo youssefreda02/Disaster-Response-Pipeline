@@ -32,12 +32,21 @@ def load_data(database_filepath):
     engine = create_engine(f'sqlite:///{database_filepath}')
     df = pd.read_sql_table('message_category', engine)
     x_columns = ['message']
+
+    # Define X and Y
     X = df[x_columns]
     Y = df.drop(x_columns, axis=1)
     Y = Y.drop(['id', 'original', 'genre'], axis=1)
-    Y.replace(inplace=True, value=1.0, to_replace=2.0)
+    
+    #There was 195 cell that contain value of 2.0, however, droping them or replacing to be 1.0 is not a big deal.
+    Y.replace(inplace=True, value=1.0, to_replace= 2.0)
+    
+    # Drop rows in Y with NaN values as the NAN rows about 140 rows. Small ratio
     Y.dropna(inplace=True)
-    X = X.loc[Y.index]
+    
+    # Drop corresponding rows in X
+    X = X.loc[Y.index]  # This keeps only the rows in X that correspond to the remaining rows in Y
+    
     return X, Y, Y.columns
 
 
@@ -67,11 +76,14 @@ def build_model():
     Returns:
         grid_search (GridSearchCV): Configured grid search for model optimization.
     """
+    #Creating the pipeline
     pipeline = Pipeline([
         ('vect', CountVectorizer(tokenizer=tokenize)),
         ('tfidf', TfidfTransformer()),
         ('clf', MultiOutputClassifier(RandomForestClassifier()))
     ])
+
+    #The Parameters for GridSearchCV
     parameters = {
         'vect__max_features': [1000, 2000],
         'clf__estimator__max_depth': [10, 20],
@@ -92,8 +104,13 @@ def evaluate_model(model, X_test, Y_test, category_names):
         Y_test (DataFrame): Test labels.
         category_names (list): List of category names for reporting.
     """
+    # Predict on test data
     y_pred = model.predict(X_test['message'])
+    
+    # Print the overall accuracy
     print('Overall Accuracy: ', (y_pred == Y_test).mean().mean())
+
+    # Loop over each category to generate a classification report
     for i, col in enumerate(category_names):
         print(f'Category: {col}\n')
         print(classification_report(Y_test[col], y_pred[:, i]))
