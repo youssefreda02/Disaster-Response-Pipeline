@@ -7,7 +7,7 @@ from nltk.tokenize import word_tokenize
 
 from flask import Flask
 from flask import render_template, request, jsonify
-from plotly.graph_objs import Bar
+from plotly.graph_objs import Bar,Heatmap
 from sklearn.externals import joblib
 from sqlalchemy import create_engine
 
@@ -26,11 +26,11 @@ def tokenize(text):
     return clean_tokens
 
 # load data
-engine = create_engine('sqlite:///.../data/DisasterResponse.db')
+engine = create_engine('sqlite:////workspace/home/data/DisasterResponse.db')
 df = pd.read_sql_table('message_category', engine)
 
 # load model
-model = joblib.load("/.../models/classifier.pkl")
+model = joblib.load("/workspace/home/models/classifier.pkl")
 
 
 # index webpage displays cool visuals and receives user input text for model
@@ -43,6 +43,13 @@ def index():
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
     
+     # Assuming categories start from index 4 (adjust as needed)
+    category_cols = df.columns[4:]
+    category_correlation_matrix = df[category_cols].corr()
+
+    # Convert the correlation matrix DataFrame to a list of lists
+    category_correlation_matrix_values = category_correlation_matrix.values.tolist()
+    category_names = list(category_correlation_matrix.columns)
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
     graphs = [
@@ -61,6 +68,32 @@ def index():
                 },
                 'xaxis': {
                     'title': "Genre"
+                }
+            }
+        },
+        {
+            'data': [
+                Heatmap(
+                    z=category_correlation_matrix_values,  # Correlation matrix
+                    x=category_names,  # Category names for x-axis
+                    y=category_names  # Category names for y-axis
+                )
+            ],
+            'layout': {
+                'title': 'Correlation Between Message Categories',
+                'yaxis': {
+                    'title': "Category"
+                },
+                'xaxis': {
+                    'title': "Category"
+                },
+                'width' : 1200,
+                'height' : 800,
+                'margin': {
+                    'l': 100,  # Left margin
+                    'r': 50,  # Right margin
+                    't': 50,  # Top margin
+                    'b': 200   # Bottom margin
                 }
             }
         }
